@@ -1,0 +1,62 @@
+You write a short Python program that checks whether a scene reconstructed in 3D from one or more images contains objects in a stated configuration. The program returns "true" or "false".
+
+=== THE QUESTION ===
+"Can you find N objects from the image such that: object 1 is a <noun>; object 2 is a <noun>; ...;
+ object i is <relation> object j from object j's perspective; object k is <relation> object m from camera N perspective; ..."
+Object k is the variable "xk". Every relation names its own frame of reference:
+  from object j's perspective   seen from object j's own facing   scene.obj_<rel>("xi", "xj")
+  from camera N perspective     seen from camera N                scene.cameras[N].third_person.<rel>("xi", "xj")
+  <rel>: left ("left of"), right ("right of"), front ("front" / "in front of"), behind.
+  Cameras keep the question's numbering: "camera N" is scene.cameras[N].
+Relations read left to right: <rel>("xi", "xj") means "xi is <rel> xj".
+
+=== PREDICATES ===
+score("is the object in the red bounding box a <noun phrase>?")   the VLM's yes-probability for each object.
+    Ask about the whole noun phrase in one call ("a white kettle", "a gray object"), worded as in the question.
+p("x")         a predicate applied to variable x; &  joins predicates (and = min).
+f.exists()     how true the formula is for the best assignment of its variables.
+
+=== THE RULE ===
+The whole question is ONE formula: every "object k is a <noun>" as score(...)("xk") and every relation as above,
+all joined with &. found = formula.exists(); return "true" if float(found) > 0.5 else "false".
+- The objects are indefinite ("a <noun>"): no iota.
+- Different variables never bind the same object, so two objects with the same noun need no extra condition.
+- Every listed object is in the formula, even one that no relation mentions.
+
+=== EXAMPLES ===  (the questions are illustrations; read each new question's own wording)
+
+Q: Can you find one objects from the image such that: object 1 is a striped umbrella.
+found = score("is the object in the red bounding box a striped umbrella?")("x1").exists()
+return "true" if float(found) > 0.5 else "false"
+
+Q: Can you find two objects from the image such that: object 1 is a lamp; object 2 is a desk; object 1 is behind object 2 from object 2's perspective.
+is_lamp = score("is the object in the red bounding box a lamp?")
+is_desk = score("is the object in the red bounding box a desk?")
+found = (is_lamp("x1") & is_desk("x2") & scene.obj_behind("x1", "x2")).exists()
+return "true" if float(found) > 0.5 else "false"
+
+Q: Can you find three objects from the image such that: object 1 is a chair; object 2 is a chair; object 3 is a white shelf; object 1 is left of object 3 from camera 0 perspective.
+is_chair = score("is the object in the red bounding box a chair?")
+is_shelf = score("is the object in the red bounding box a white shelf?")
+found = (is_chair("x1") & is_chair("x2") & is_shelf("x3")                 # two different chairs: distinct variables
+         & scene.cameras[0].third_person.left("x1", "x3")).exists()
+return "true" if float(found) > 0.5 else "false"
+
+Q: Can you find four objects from the image such that: object 1 is a basket; object 2 is a green bottle; object 3 is a stool; object 4 is a lamp; object 2 is right of object 3 from object 3's perspective; object 1 is front object 4 from camera 2 perspective; object 3 is behind object 1 from camera 1 perspective.
+is_basket = score("is the object in the red bounding box a basket?")
+is_bottle = score("is the object in the red bounding box a green bottle?")
+is_stool = score("is the object in the red bounding box a stool?")
+is_lamp = score("is the object in the red bounding box a lamp?")
+found = (is_basket("x1") & is_bottle("x2") & is_stool("x3") & is_lamp("x4")
+         & scene.obj_right("x2", "x3")
+         & scene.cameras[2].third_person.front("x1", "x4")                # "front" = in front of
+         & scene.cameras[1].third_person.behind("x3", "x1")).exists()
+return "true" if float(found) > 0.5 else "false"
+
+=== OUTPUT ===
+The program in ```python ... ```, ending with return "true" if float(found) > 0.5 else "false". The program is the
+body of a function: top-level statements, no def wrapper around them.
+
+<text> {query} </text>
+
+{clarified_query_block}

@@ -1,0 +1,271 @@
+You write a short Python program that answers a spatial question about a scene reconstructed in 3D from one or more images.
+
+=== THE RULE ===
+The whole question is ONE formula, and ONE decision answers it.
+1. Compose: write what the question says about its entities as a formula J over variables, joined with & (and), | (or), ~ (not).
+   "x1" is the entity the question asks about; "x2" (and "x3") are the entities it is related to.
+2. Decide: each option makes a claim; the answer is the option whose claim, joined with J, is most true:
+   return max(options, key=lambda k: float((J & <claim of option k>).exists()))
+   (.exists() is the formula's value at its best binding, so this binds the entities and the answer at once).
+
+- Relations read left to right: R("x1", "x2") means "x1 R x2".
+- An object's <dir> side, as a viewer at image N sees it, is a region around that object: stand at the object oriented
+  like camera(N) and use first_person.<dir>("x1"); "where is A relative to B" asks this at B. third_person orders two entities along the viewer's own axes
+  (which of two is nearer, further left, higher); it does not describe the region around an object.
+- A step forward shortens my distance to an entity exactly when that entity is in front of me: that is
+  first_person.front of the entity, after any turn. Never simulate the step numerically.
+- Add a predicate only for words the question says: closeness only for "near", "next to", "closest", "far".
+- Superlatives (closest, farthest, leftmost, highest): M.best("x1", among=S) is the entity that ranks highest on the
+  measure M among the entities in S, the conditions the question puts on it ("round objects on my right"). Measures:
+  closeness to a named entity, (scene.closeness("x1", "x2") & <its description>("x2")).exists("x2"); scene.distance in its
+  place for farthest; anchor.first_person.<dir>("x1") for leftmost / highest / ... . Put every condition in S, never & it
+  with M: there its degree would compete with the ranking.
+- Different entity variables never bind the same entity, so never exclude x2 or the anchor entity from x1 by hand.
+- Entity variables bind OBJECTS. A camera enters a formula as an anchor or as the constant camera(N).
+
+=== ENTITIES ===
+K = scene.objects_count. Objects are indices 0..K-1; the cameras follow them.
+camera(N) is the question's "image N" / "view N" / "figure N" (1-based, never add or subtract 1). It is the camera's
+index in every predicate (pred[camera(N)]) and it is the camera itself (camera(N).position, camera(N).orientation).
+Pick objects only through a formula and assign(); never write a literal object index.
+
+=== ANCHORS ===  (where I stand and which way I face; two forms)
+anchor = scene.frame(position=<3-vector>, orientation=<3x3>)      at a point
+    position:     camera(N).position, scene.room_center(), or any 3D point
+    orientation:  camera(N).orientation, or scene.orientation_from_forward(<3-vector>) to face along a direction.
+                  Without it the frame answers compass words only (north, south-east, ...), which need no
+                  facing, until .look_at gives it one: scene.frame(position=<3-vector>).look_at(<target>)
+anchor = scene.frame(at=<name>)                                    at an object the question names
+    <name> = score("is the object in the red bounding box a <name>?").iota("x2"), its description;
+    at= also takes a 3D point (then it is position=), never an index. The frame faces where that object faces;
+    orientation=<3x3> (e.g. camera(N).orientation) sets another facing.
+anchor.rotate(yaw=d)      turn d degrees (+ right, - left, 180 = turn around)
+                          after a turn the anchor's front/back/left/right are the turned ones: ask the turned
+                          anchor directly (behind me after turning around = .rotate(yaw=180).first_person.back).
+anchor.look_at(p)         same position, turned to face p (a named object's description, camera(N) or a 3D point)
+anchor.translate(<3-vector>)        anchor.front_vec: the direction the anchor faces
+Which way I face is part of what the question says. An activity that implies a facing fixes it
+(X, Y: a named object's description, x = score(...).iota("x2")):
+  standing at X oriented like camera N              scene.frame(at=X, orientation=camera(N).orientation)
+  sitting or lying on X (chair, sofa, toilet, bed)  scene.frame(at=X): I face where X faces
+  working at X (desk, stove, sink, counter)         scene.frame(at=X).rotate(yaw=180): I face X
+  in an area the question shows in image N          scene.frame(at=<the area>, orientation=camera(N).orientation)
+  entering through X                                scene.frame(at=X).look_at(scene.room_center())
+  at X facing Y; "X's front is toward Y"            scene.frame(at=X).look_at(Y)   (away from Y: then .rotate(yaw=180))
+
+=== PREDICATES ===  (each scores every entity; call it with variables to use it in J)
+score("is the object in the red bounding box <q>?")      the VLM's yes-probability for each entity's box.
+    score(...).iota("x1")   the same, rescaled so the best match is 1.0. Use it for every entity the question NAMES:
+                            with & = min, a raw 0.4 would cap J at 0.4 and leave J.assign() to break ties.
+    Property ("square", "made of wood"): score(...)("x1"), raw; it is a degree, not a name.
+    Ask about ONE entity and ONE property per call: "a sofa", not "two sofas";
+    "square or rectangular" is score(...square?)("x1") | score(...rectangular?)("x1").
+anchor.first_person.<dir>("x1")         x1 is on MY <dir> (I stand at the anchor).
+                                        dir: front back left right front-left front-right back-left back-right above below
+anchor.third_person.<dir>("x1", "x2")   seen from the anchor, x1 is <dir> of x2.  dir: front behind left right above below
+anchor.facing.<dir>("x1")               x1 itself faces <dir> relative to the anchor.  dir: front back left right
+                                        (and the diagonals) above below.
+anchor.turned.<dir>[camera(N)]          how camera N turned from the anchor's view: the way its view swung,
+                                        left/right (panned), above/below (tilted), back (turned around),
+                                        front (did not turn). With the question's axes declared
+                                        (scene.set_axis_convention), "+x", "-y", ...: turned by a positive / negative
+                                        angle about that axis (right-hand rule; a roll about the forward axis is 0.5).
+scene.closeness("x1", "x2")             x1 is near x2.   ~scene.closeness("x1", "x2")  x1 is far from x2.
+scene.facing("x1", "x2")                x1 faces toward x2.
+An entity in place of a variable reads the predicate at that entity: first_person.front(camera(2)) is
+first_person.front[camera(2)]. anchor.first_person.<dir>[p] reads a 3D point p the same way.
+
+=== READING THE OPTIONS ===
+Copy the options dict verbatim from the question's Options line; options[k] is the option's text.
+  Object options:     return max(options, key=lambda k: float((J & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+                      (option k claims: x1 is an options[k])
+  Direction options:  write the options with the predicate vocabulary, then read each at the entity:
+                      labels = {"A": "front-left", "B": "right", ...}
+                      return max(labels, key=lambda k: float(anchor.first_person(labels[k])[camera(2)]))
+                      for a named object keep its formula J:  float((J & anchor.first_person(labels[k])("x1")).exists())
+  Angle options:      "d degrees counterclockwise": anchor.direction(target=i).degree() is entity i's angle clockwise
+                      from my front (0-360; d counterclockwise is 360 - d); pick the option nearest to it.
+  Yes/no options:     truth = float(J.exists())       (how true the question's claim is)
+                      return max(options, key=lambda k: truth if options[k] == "Yes" else 1 - truth)
+
+=== EXAMPLES ===  (the questions are illustrations; read each new question's own wording)
+
+Q: Seen from camera 2, which item hangs directly above the fireplace? A. Painting B. Clock C. Mirror
+fireplace = score("is the object in the red bounding box a fireplace?").iota("x2")
+anchor = scene.frame(at=fireplace, orientation=camera(2).orientation)
+options = {"A": "painting", "B": "clock", "C": "mirror"}
+return max(options, key=lambda k: float((anchor.first_person.above("x1") & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: Which round object on the right side of image 2 is closest to the sink? A. Bowl B. Clock C. Plate
+anchor = scene.frame(position=camera(2).position, orientation=camera(2).orientation)
+sink = score("is the object in the red bounding box a sink?").iota("x2")
+near_sink = (scene.closeness("x1", "x2") & sink).exists("x2")                                      # how close x1 is to the sink
+S = score("is the object in the red bounding box round?")("x1") & anchor.first_person.right("x1")   # who competes
+J = near_sink.best("x1", among=S)                                                                   # the closest of them
+options = {"A": "bowl", "B": "clock", "C": "plate"}
+return max(options, key=lambda k: float((J & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: Seen from photo 1, does the guitar stand to the right of the piano? A. Yes B. No
+anchor = scene.frame(position=camera(1).position, orientation=camera(1).orientation)
+J = (anchor.third_person.right("x1", "x2") & score("is the object in the red bounding box a guitar?").iota("x1")
+     & score("is the object in the red bounding box a piano?").iota("x2"))
+truth = float(J.exists())
+options = {"A": "Yes", "B": "No"}
+return max(options, key=lambda k: truth if options[k] == "Yes" else 1 - truth)
+
+Q: From the perspective of the cat, which wooden object on its left is farthest from it? A. Chair B. Shelf C. Table
+cat = score("is the object in the red bounding box a cat?").iota("x2")
+anchor = scene.frame(at=cat)                                                                             # at the cat, facing where it faces
+far_cat = (scene.distance("x1", "x2") & cat).exists("x2")                                                 # how far x1 is from the cat
+S = score("is the object in the red bounding box made of wood?")("x1") & anchor.first_person.left("x1")   # who competes
+J = far_cat.best("x1", among=S)                                                                           # the farthest of them
+options = {"A": "chair", "B": "shelf", "C": "table"}
+return max(options, key=lambda k: float((J & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: From the spot where photo 3 was shot, after a 45-degree turn to the left, which appliance is straight ahead? A. Fridge B. Oven C. Toaster
+anchor = scene.frame(position=camera(3).position, orientation=camera(3).orientation).rotate(yaw=-45)
+J = anchor.first_person.front("x1")
+options = {"A": "fridge", "B": "oven", "C": "toaster"}
+return max(options, key=lambda k: float((J & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: If the photographer of picture 2 spins around, is the umbrella stand then ahead of them? A. Yes B. No
+anchor = scene.frame(position=camera(2).position, orientation=camera(2).orientation).rotate(yaw=180)
+J = anchor.first_person.front("x1") & score("is the object in the red bounding box an umbrella stand?").iota("x1")
+truth = float(J.exists())
+options = {"A": "Yes", "B": "No"}
+return max(options, key=lambda k: truth if options[k] == "Yes" else 1 - truth)
+
+Q: Relative to camera 3, where is camera 1? A. Back-left B. Right C. Front
+anchor = scene.frame(position=camera(3).position, orientation=camera(3).orientation)
+labels = {"A": "back-left", "B": "right", "C": "front"}
+return max(labels, key=lambda k: float(anchor.first_person(labels[k])[camera(1)]))
+
+Q: How did the view change from photo 1 to photo 2? A. Stepped back and tilted down B. Stepped forward and tilted down C. Stepped back and tilted up
+a1 = scene.frame(position=camera(1).position, orientation=camera(1).orientation)
+claims = {"A": ("back", "below"), "B": ("front", "below"), "C": ("back", "above")}   # (the step, the turn): both named
+return max(claims, key=lambda k: float(a1.first_person(claims[k][0])[camera(2)] & a1.turned(claims[k][1])[camera(2)]))
+
+Q: Between photo 2 and photo 3, which way did the camera swing? A. Up B. To the left C. To the right
+a2 = scene.frame(position=camera(2).position, orientation=camera(2).orientation)
+labels = {"A": "above", "B": "left", "C": "right"}                    # a turn alone: turned, no first_person
+return max(labels, key=lambda k: float(a2.turned(labels[k])[camera(3)]))
+
+Q: Sitting on the piano bench with the orientation of camera 1, which object would be on my right hand? A. Lamp B. Plant C. Door
+bench = score("is the object in the red bounding box a piano bench?").iota("x2")
+anchor = scene.frame(at=bench, orientation=camera(1).orientation)
+options = {"A": "lamp", "B": "plant", "C": "door"}
+return max(options, key=lambda k: float((anchor.first_person.right("x1") & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: Camera 1 looks at the front of the mailbox. Which side of the mailbox does camera 3 face? A. Its left B. Its back C. Its right
+mailbox = score("is the object in the red bounding box a mailbox?").iota("x2")
+f = scene.frame(at=mailbox).look_at(camera(1))   # its front faces camera 1
+labels = {"A": "left", "B": "back", "C": "right"}
+return max(labels, key=lambda k: float(f.first_person(labels[k])[camera(3)]))
+
+Q: With axes x to the right, y ahead, z up (right-handed), which rotation turns camera 1's view into camera 2's? A. Positive about z B. Negative about z C. Positive about x
+scene.set_axis_convention(right="+X", up="+Z", forward="+Y")      # the question's axes, as stated
+a1 = scene.frame(position=camera(1).position, orientation=camera(1).orientation)
+claims = {"A": "+z", "B": "-z", "C": "+x"}                          # the turn each option claims
+return max(claims, key=lambda k: float(a1.turned(claims[k])[camera(2)]))
+
+Q: The camera's axes are x to the right, y down, z ahead. Where is camera 2 relative to camera 1? A. +x and +z B. -x and +z C. +x and -z
+scene.set_axis_convention(right="+X", up="-Y", forward="+Z")
+a1 = scene.frame(position=camera(1).position, orientation=camera(1).orientation)
+x, y, z = a1.project(a1.displacement(camera(2)))      # camera 2's coordinates in the question's axes
+claims = {"A": (1, 1), "B": (-1, 1), "C": (1, -1)}
+return max(claims, key=lambda k: claims[k][0] * x + claims[k][1] * z)   # graded: how well each claimed sign pair agrees
+
+Q: The bookcase stands with its back to the window. Which object is on the bookcase's right? A. Lamp B. Chair C. Plant
+window = score("is the object in the red bounding box a window?").iota("x2")
+bookcase = score("is the object in the red bounding box a bookcase?").iota("x2")
+anchor = scene.frame(at=bookcase).look_at(window).rotate(yaw=180)   # its back is toward the window
+options = {"A": "lamp", "B": "chair", "C": "plant"}
+return max(options, key=lambda k: float((anchor.first_person.right("x1") & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: The piano is on the east side of the couch. Which object is north of the couch? A. Rug B. Shelf C. Lamp
+piano = score("is the object in the red bounding box a piano?").iota("x2")
+couch = score("is the object in the red bounding box a couch?").iota("x2")
+scene.set_cardinal_vector(scene.cardinalize(scene.frame(at=couch).look_at(piano).front_vec, known="east"))   # the stated fact: couch -> piano points east
+anchor = scene.frame(at=couch)
+options = {"A": "rug", "B": "shelf", "C": "lamp"}
+return max(options, key=lambda k: float((anchor.first_person.north("x1") & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: I sit at the desk, working at it. Which object is on my right? A. Lamp B. Printer C. Plant
+desk = score("is the object in the red bounding box a desk?").iota("x2")
+me = scene.frame(at=desk).rotate(yaw=180)   # working at the desk: I face it
+options = {"A": "lamp", "B": "printer", "C": "plant"}
+return max(options, key=lambda k: float((me.first_person.right("x1") & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: From where photo 2 was taken, I turn my back to the view. Which object is behind me now? A. Sofa B. TV C. Lamp
+me = scene.frame(position=camera(2).position, orientation=camera(2).orientation).rotate(yaw=180)   # turned around
+J = me.first_person.back("x1")                                   # behind me AFTER the turn: ask the turned frame directly
+options = {"A": "sofa", "B": "TV", "C": "lamp"}
+return max(options, key=lambda k: float((J & score(f"is the object in the red bounding box a {options[k]}?").iota("x1")).exists()))
+
+Q: Between picture 1 and picture 2, where did the ball roll, as camera 1 sees it? A. To the left B. Toward the camera C. Nowhere, it stayed
+b = score("is the object in the red bounding box a ball?").iota("x1").assign()["x1"]
+c = scene.objects[b].per_view_centers                  # where it was in image 1 (key 0) and in image 2 (key 1)
+before = scene.frame(position=c[0], orientation=camera(1).orientation)   # its earlier spot, with camera 1's axes
+moved = min(1.0, float(np.linalg.norm(c[1] - c[0]) / max(scene.objects[b].dims)))   # how far, in its own sizes (a still object jitters by a fraction of one)
+claims = {"A": min(moved, float(before.first_person.left[c[1]])), "B": min(moved, float(before.first_person.back[c[1]])), "C": 1 - moved}
+return max(claims, key=lambda k: claims[k])           # a direction is "moved & that way"; staying is "not moved"
+
+Q: Looking down on the room, did the stool turn clockwise or counterclockwise between shot 1 and shot 2? A. Clockwise B. Counterclockwise
+s = score("is the object in the red bounding box a stool?").iota("x1").assign()["x1"]
+f, p = scene.objects[s].per_view_fronts, scene.objects[s].position   # the way it faced in image 1 (key 0) and image 2 (key 1)
+yaw, pitch = scene.frame(position=p, orientation=scene.orientation_from_forward(f[0])).rotation_to(
+    scene.frame(position=p, orientation=scene.orientation_from_forward(f[1])))   # +yaw = it turned right
+angle = {"up": -yaw}                      # right-hand rule: seen from above, clockwise is a NEGATIVE angle about the up axis
+claims = {"A": ("up", -1), "B": ("up", 1)}
+return max(claims, key=lambda k: claims[k][1] * angle[claims[k][0]])   # graded: the signed angle each option claims
+
+=== SHAPES THAT ARE NOT RELATIONS ===
+- Between two images the camera moves and turns, both read from camera A's frame: where it moved is where camera B
+  stands, first_person(<label>)[camera(B)]; how it turned is the way its view swung, turned(<label>)[camera(B)].
+  A step alone is first_person, a turn alone is turned; only an option that names both a step and a turn joins them with &.
+- Compass directions: the question states ONE known direction. Build the vector v that points that way, then
+  scene.set_cardinal_vector(scene.cardinalize(v, known="<that direction>"))   (known: "north", "southwest", ...).
+  v points from the reference to what the question places there (A, B, X: their descriptions, score(...).iota("x2")):
+      "A is <dir> of B", "A is on B's <dir> side"          v = scene.frame(at=B).look_at(A).front_vec
+      "A is on the <dir> wall / side / corner of the room" v = scene.frame(position=scene.room_center()).look_at(A).front_vec
+      "X faces <dir>" (X's front)                           v = scene.frame(at=X).front_vec
+      a door or window "faces <dir>" (facing out), the way out through it
+                                                            v = scene.frame(position=scene.room_center()).look_at(X).front_vec
+      a person facing <dir> while doing something           v = the front_vec of that person's anchor (ANCHORS)
+      "image N is taken facing <dir>"                       v = camera(N).front_vec
+      "image N is taken from X's <dir> side"                v = scene.frame(at=X).look_at(camera(N)).front_vec
+  Then anchor.first_person.north / south-east / ... work on every anchor, as do
+  anchor.third_person.north("x1", "x2") (x1 is north of x2) and anchor.facing.north("x1") (x1 faces north;
+  anchor.facing.north[camera(N)]: camera N faces north).
+- A side of an object that a camera shows faces that camera. With f = scene.frame(at=<object>).look_at(camera(N))
+  (<object>: its description; the shown side is f's front), the side another camera M shows is
+  where camera M stands: f.first_person(<label>)[camera(M)]. For a compass side S shown by camera N, the direction from the
+  object toward camera N points S: scene.set_cardinal_vector(scene.cardinalize(f.front_vec, known="<S>")),
+  then f.first_person.<compass>[camera(M)].
+- A coordinate system the question defines for the camera (axis labels such as "x to the right, y down, z ahead"): transcribe it with
+      scene.set_axis_convention(right=..., up=..., forward=...)   then  x, y, z = anchor.project(anchor.displacement(<target>))
+  gives the target's coordinates in that system, and anchor_1.turned("+z")[camera(N)] how strongly camera N turned by a
+  positive angle about its z axis (soft).
+- Counting: score("is the object in the red bounding box a chair?")("x1").count() counts the entities that are chairs
+  (compare it with each option's number; "Two" is 2).
+- Size: compare ratios of scene.objects[i].dims between assigned indices; the reconstruction has no absolute scale.
+- Object motion across images: scene.objects[i].per_view_centers[N-1] is where object i was in image N (keys are 0-based;
+  only the images where the object was detected have a key);
+  the motion from image 1 to image 2 is per_view_centers[1] - per_view_centers[0]; per_view_fronts[N-1] is the way it
+  faced in image N (how it turned: frames facing those two directions, then rotation_to). An object moving forward
+  advances along its front from the earlier image to the later one. A frame at an object (scene.frame(at=...)) faces
+  where the object faces, not where it moves: read motion from per_view_centers only.
+
+=== OUTPUT ===
+First a <thinking> block of 2-4 sentences: name the entities (x1, x2), the anchor, the formula J in words, and what each option claims.
+Then the program in ```python ... ```, ending with return max(...). The program is the body of a function:
+top-level statements, no def wrapper around them.
+
+OBJECT GROUNDINGS (objects the planner located; use these nouns in score(...)):
+{object_groundings_block}
+
+{scene_facts_block}
+
+<text> {query} </text>
+
+{clarified_query_block}

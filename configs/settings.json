@@ -1,0 +1,197 @@
+{
+  "OPENROUTER_API_KEY": {
+    "default": "",
+    "group": "runtime",
+    "help": "Code LLM via OpenRouter (--code_gen_provider openrouter)."
+  },
+  "DEEPSEEK_API_KEY": {
+    "default": "",
+    "group": "runtime",
+    "help": "Code LLM (default): deepseek-chat through the OpenAI client at api.deepseek.com."
+  },
+  "SAPY_OPENROUTER_PROVIDER": {
+    "default": "StreamLake",
+    "group": "runtime",
+    "help": "OpenRouter upstream pinned with --code_gen_provider openrouter."
+  },
+  "SAPY_OPENROUTER_QUANT": {
+    "default": "fp8",
+    "group": "runtime",
+    "help": "OpenRouter quantisation pinned with the provider above."
+  },
+  "SAPY_PROVIDER_LOG": {
+    "default": "experiments/provider_log.jsonl",
+    "group": "runtime",
+    "help": "JSONL of every code-LLM call: served provider/model/tokens (or the error)."
+  },
+  "SAPY_THINKING_LOG": {
+    "default": "",
+    "group": "runtime",
+    "help": "JSONL path; when set, the coder's <thinking> text of every fresh generation is appended (query, cache key, text)."
+  },
+  "SAPY_VLM_MODEL": {
+    "default": "",
+    "group": "runtime",
+    "help": "Served VLM id (must match vLLM's --served-model-name)."
+  },
+  "SAPY_VLM_BASE_URL": {
+    "default": "http://127.0.0.1:8100/v1",
+    "group": "runtime",
+    "help": "vLLM OpenAI-compatible endpoint."
+  },
+  "SAPY_VLM_SEED": {
+    "default": "",
+    "group": "runtime",
+    "help": "Optional sampling seed passed to vLLM."
+  },
+  "SAPY_SERVE_HTTP_PORT": {
+    "default": "8011",
+    "group": "runtime",
+    "help": "Ray Serve HTTP port for the perception services."
+  },
+  "FORCE3D_DATA_ROOT": {
+    "default": "",
+    "group": "runtime",
+    "help": "Dir holding 3DForceRef.json / 3DForcePuzzle.json and multiview/ (default: data/3d-force)."
+  },
+  "FORCE3D_IMAGE_ROOT": {
+    "default": "",
+    "group": "runtime",
+    "help": "Root of the multi-view images the question-file paths are rebased onto (default: $FORCE3D_DATA_ROOT/multiview)."
+  },
+  "FORCE3D_IMAGE_EXT": {
+    "default": "",
+    "group": "runtime",
+    "help": "Image extension after rebasing (default: .jpg, the image pack's format)."
+  },
+  "MINDCUBE_DATA_ROOT": {
+    "default": "",
+    "group": "runtime",
+    "help": "MindCube data dir (default data/mindcube)."
+  },
+  "MMSI_DATA_ROOT": {
+    "default": "",
+    "group": "runtime",
+    "help": "MMSI-Bench data dir (default data/mmsi)."
+  },
+  "SATURN_LOG_LEVEL": {
+    "default": "INFO",
+    "group": "runtime",
+    "help": "Log level for the saturn.* loggers (stderr); progress lines on stdout are unaffected."
+  },
+  "SATURN_TOOLS_DIR": {
+    "default": "tools",
+    "group": "runtime",
+    "help": "Directory holding vendored third-party checkouts (Orient-Anything-V2, sam3). Default: <repo root>/tools."
+  },
+  "SAPY_ENABLE_VGGT": {
+    "default": "1",
+    "group": "runtime",
+    "help": "Deploy the VGGT reconstruction service."
+  },
+  "SAPY_ENABLE_SAM3": {
+    "default": "1",
+    "group": "runtime",
+    "help": "Deploy the SAM3 detection/mask service."
+  },
+  "SAPY_VGGT_NUM_GPUS": {
+    "default": "1",
+    "group": "runtime",
+    "help": "Fractional GPU per VGGT replica."
+  },
+  "SAPY_SAM3_NUM_GPUS": {
+    "default": "0.5",
+    "group": "runtime",
+    "help": "Fractional GPU per SAM3 replica."
+  },
+  "SAPY_SAM3_MIN_REPLICAS": {
+    "default": "2",
+    "group": "runtime",
+    "help": "SAM3 autoscaling floor."
+  },
+  "SAPY_SAM3_MAX_REPLICAS": {
+    "default": "4",
+    "group": "runtime",
+    "help": "SAM3 autoscaling ceiling."
+  },
+  "SAPY_SAM3_TARGET_INFLIGHT": {
+    "default": "2",
+    "group": "runtime",
+    "help": "SAM3 autoscaler target in-flight requests per replica."
+  },
+  "SAPY_SAM3_MAX_ONGOING": {
+    "default": "8",
+    "group": "runtime",
+    "help": "SAM3 max concurrent requests per replica."
+  },
+  "SAPY_ORIANY_NUM_GPUS": {
+    "default": "0.25",
+    "group": "runtime",
+    "help": "Fractional GPU per Orient-Anything replica."
+  },
+  "SAPY_ORIANY_MIN_REPLICAS": {
+    "default": "1",
+    "group": "runtime",
+    "help": "Orient-Anything autoscaling floor (it is the highest-call-rate service)."
+  },
+  "SAPY_ORIANY_MAX_REPLICAS": {
+    "default": "8",
+    "group": "runtime",
+    "help": "Orient-Anything autoscaling ceiling."
+  },
+  "SAPY_ORIANY_TARGET_INFLIGHT": {
+    "default": "2",
+    "group": "runtime",
+    "help": "Orient-Anything autoscaler target in-flight requests per replica."
+  },
+  "SAPY_ORIANY_BATCH_SIZE": {
+    "default": "16",
+    "group": "runtime",
+    "help": "Requests coalesced into one Orient-Anything batch."
+  },
+  "SAPY_ORIANY_BATCH_WAIT_S": {
+    "default": "0.05",
+    "group": "runtime",
+    "help": "How long a batch waits to fill."
+  },
+  "SAPY_ORIANY_INTERNAL_CHUNK": {
+    "default": "32",
+    "group": "runtime",
+    "help": "Crops per forward pass inside the estimator."
+  },
+  "SAPY_CODEGEN_SEED": {
+    "default": "0",
+    "group": "runtime",
+    "help": "Seed sent to the code LLM (default 0: deterministic decoding where the provider honours it; set another integer to measure program variation)."
+  },
+  "SAPY_STRICT_ASSIGN": {
+    "default": "0",
+    "group": "runtime",
+    "help": "1: assign() raises DegenerateBindingError on an all-zero entity formula (debugging). 0: log and keep the argmax."
+  },
+  "SAPY_TRACE_SCORES": {
+    "default": "",
+    "group": "debug",
+    "help": "1 = record the per-op score trace during execution (O(n^k) serialisation)."
+  },
+  "SAPY_DUMP_SCORES": {
+    "default": "",
+    "group": "debug",
+    "help": "Set = store unary score vectors per sample (implies the trace)."
+  },
+  "SAPY_SCORE_STUB": {
+    "default": "",
+    "group": "debug",
+    "help": "Set to a float: exec score() returns this constant (camera slots / self-pairs 0) instead of calling the VLM. For scorer A/B replays of cached programs."
+  },
+  "SAPY_SCENE_DUMPS": {
+    "default": "",
+    "group": "debug",
+    "help": "1 = write per-sample scene JSON dumps even without --generate_reports."
+  },
+  "SAPY_FUSION_DEBUG": {
+    "default": "",
+    "group": "debug",
+    "help": "Set = verbose fusion logging."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "default": {
+    "code_prompt": "prompts/vqa.txt",
+    "program_cache": "cache/programs.json",
+    "pose_constraints": false
+  },
+  "benchmarks": {
+    "mindcube":       {"code_prompt": "prompts/vqa.txt",         "pose_constraints": true},
+    "mmsi":           {"code_prompt": "prompts/vqa.txt",         "pose_constraints": false},
+    "force3d-ref":    {"code_prompt": "prompts/force3d_ref.txt", "pose_constraints": false},
+    "force3d-puzzle": {"code_prompt": "prompts/force3d_sag.txt", "pose_constraints": false}
+  }
+}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saturn"
+version = "0.1.0"
+requires-python = ">=3.10"
+# No dependencies list yet: the pinned environment lives in requirements.txt
+# (release) / requirements.venv.txt (dev).
+
+[project.scripts]
+saturn = "saturn.cli.main:main"
+saturn-serve = "saturn.serving.deploy:main"
+saturn-report = "saturn.reports.debug_report:main"
+
+[tool.setuptools.packages.find]
+include = ["saturn*"]
+
+[tool.setuptools.package-data]
+"saturn.reports" = ["templates/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["requires_dumps: needs local scene dumps"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["_attic", "tools", "external", "release", "data", "experiments"]

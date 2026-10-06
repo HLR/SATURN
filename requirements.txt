@@ -1,0 +1,23 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
+# Curated from the pinned environment the paper used (Python 3.10, CUDA 12.4).
+# Only packages imported by the shipped modules are listed; see requirements.vllm.txt
+# for the separate vLLM serving environment.
+huggingface-hub==1.8.0
+numpy==1.26.4
+openai==2.26.0
+opencv-python==4.9.0.80
+pandas==2.3.3
+pillow==11.3.0
+python-dotenv==1.2.2
+ray[serve]==2.53.0
+scipy==1.15.3
+torch==2.5.1+cu124
+torchvision==0.20.1+cu124
+transformers==5.3.0
+pytest
+
+# imported but not pinned in the source environment (installed transitively or vendored):
+# sam3
+# utils
+# vggt
+# vision-tower

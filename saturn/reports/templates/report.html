@@ -1,0 +1,48 @@
+<!-- Outer HTML skeletons for the debug reports (string.Template placeholders). -->
+<!-- @@block header -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug Report — Sample $item_id</title>
+<style>$css</style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head><body>
+<div class="nav">
+    <a href="index.html">Index</a>
+    $prev_link
+    $next_link
+    <span style="color:var(--muted)">Sample $sample_no / $total</span>
+</div>
+<h1>Sample $item_id &nbsp; $status_badge $planner_badge</h1>
+
+<!-- @@block footer -->
+</body></html>
+<!-- @@block index -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug Reports — $stem</title>
+<style>$css</style>
+</head><body>
+<h1>Debug Reports — $stem</h1>
+<p style="color:var(--muted);font-size:0.88rem">Source: $result_json</p>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">$n</div><div class="label">Samples</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--green)">$acc%</div><div class="label">Accuracy</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--green)">$n_correct</div><div class="label">Correct</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--red)">$n_wrong</div><div class="label">Wrong</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--amber)">$n_error</div><div class="label">Error</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--accent)">$n_rf</div><div class="label">Clarifier Hits</div></div>
+  <div class="stat-card"><div class="num">$n_vlm</div><div class="label">VLM Fallbacks</div></div>
+</div>
+
+$mmsi_taxonomy_html
+
+<h2>All Samples</h2>
+<table class="summary-table">
+<tr><th>ID</th><th>Status</th><th>Predicted</th><th>GT</th><th>Type</th><th>Clarifier</th><th>Objs</th><th>Retries</th><th>Question</th></tr>
+$rows
+</table>
+
+</body></html>

@@ -1,0 +1,86 @@
+You write a short Python program that finds the object a referring expression describes, in a scene reconstructed in 3D from one or more images. The program returns that object's index.
+
+=== THE EXPRESSION ===
+"Find the <target> that is <relation> the <anchor> (<frame>) [and <relation> the <anchor> (<frame>) ...],
+ where the <anchor> is <relation> the <anchor> (<frame>) [and the <anchor> is ...], where ..."
+Every relation names its own frame of reference:
+  (the <anchor>'s view)   seen from that anchor's own facing   scene.obj_<rel>("xa", "xb")
+  (camera N view)         seen from camera N                   scene.cameras[N].third_person.<rel>("xa", "xb")
+  <rel>: left ("to the left of"), right ("to the right of"), front ("in front of"), behind.
+  Cameras keep the question's numbering: "camera N" is scene.cameras[N].
+Relations read left to right: <rel>("xa", "xb") means "xa is <rel> xb". In scene.obj_<rel>, xb is the anchor whose view it is.
+
+=== PREDICATES ===
+score("is the object in the red bounding box a <noun phrase>?")   the VLM's yes-probability for each object.
+    Ask about the whole noun phrase in one call ("a gray floor lamp", "a white object"), worded as in the expression.
+p("x")          a predicate applied to variable x; &  joins predicates (and = min).
+f.iota("x")     the definite article over x: "the <noun>", the formula's best match for x.
+f.argmax()      the index of the best object.
+
+=== THE RULE ===
+Every entity in the expression is "the <noun>": each one is its own variable and its own iota.
+1. Resolve the anchors from the end of the expression back toward the target. An anchor is its noun, joined with
+   & to its relations to the anchors that the expression places it against, then .iota of its own variable.
+2. The target is its noun joined with its relations to its anchors (one relation per "and"), then .iota("x1").
+3. return int(target.argmax())
+- "where the <anchor> is ..." constrains that anchor, not the target; "and" after the target adds another relation of the target.
+- One variable per entity, never reused; different variables never bind the same object.
+- Pick the object only through the formula; never write a literal object index.
+
+=== EXAMPLES ===  (the expressions are illustrations; read each new expression's own wording)
+
+Q: Find the white teapot
+target = score("is the object in the red bounding box a white teapot?")("x1").iota("x1")
+return int(target.argmax())
+
+Q: Find the stool that is in front of the armchair (the armchair's view).
+is_stool = score("is the object in the red bounding box a stool?")
+armchair = score("is the object in the red bounding box an armchair?")("x2").iota("x2")
+target = (is_stool("x1") & scene.obj_front("x1", "x2") & armchair("x2")).iota("x1")
+return int(target.argmax())
+
+Q: Find the vase that is behind the lamp (camera 2 view), where the lamp is to the right of the blue rug (camera 0 view).
+is_vase = score("is the object in the red bounding box a vase?")
+is_lamp = score("is the object in the red bounding box a lamp?")
+rug = score("is the object in the red bounding box a blue rug?")("x3").iota("x3")
+lamp = (is_lamp("x2") & scene.cameras[0].third_person.right("x2", "x3") & rug("x3")).iota("x2")          # anchors first, innermost first
+target = (is_vase("x1") & scene.cameras[2].third_person.behind("x1", "x2") & lamp("x2")).iota("x1")
+return int(target.argmax())
+
+Q: Find the mug that is to the left of the kettle (the kettle's view) and behind the toaster (camera 2 view).
+is_mug = score("is the object in the red bounding box a mug?")
+kettle = score("is the object in the red bounding box a kettle?")("x2").iota("x2")
+toaster = score("is the object in the red bounding box a toaster?")("x3").iota("x3")
+target = (is_mug("x1") & scene.obj_left("x1", "x2") & kettle("x2")                                  # one relation per "and"
+          & scene.cameras[2].third_person.behind("x1", "x3") & toaster("x3")).iota("x1")
+return int(target.argmax())
+
+Q: Find the red book that is to the right of the clock (the clock's view), where the clock is in front of the gray sofa (the gray sofa's view), where the gray sofa is to the left of the plant (camera 0 view).
+is_book = score("is the object in the red bounding box a red book?")
+is_clock = score("is the object in the red bounding box a clock?")
+is_sofa = score("is the object in the red bounding box a gray sofa?")
+plant = score("is the object in the red bounding box a plant?")("x4").iota("x4")
+sofa = (is_sofa("x3") & scene.cameras[0].third_person.left("x3", "x4") & plant("x4")).iota("x3")
+clock = (is_clock("x2") & scene.obj_front("x2", "x3") & sofa("x3")).iota("x2")
+target = (is_book("x1") & scene.obj_right("x1", "x2") & clock("x2")).iota("x1")
+return int(target.argmax())
+
+Q: Find the candle that is behind the bowl (camera 0 view) and in front of the radio (the radio's view), where the bowl is to the right of the green towel (the green towel's view) and the radio is to the left of the jar (camera 1 view).
+is_candle = score("is the object in the red bounding box a candle?")
+is_bowl = score("is the object in the red bounding box a bowl?")
+is_radio = score("is the object in the red bounding box a radio?")
+towel = score("is the object in the red bounding box a green towel?")("x4").iota("x4")
+jar = score("is the object in the red bounding box a jar?")("x5").iota("x5")
+bowl = (is_bowl("x2") & scene.obj_right("x2", "x4") & towel("x4")).iota("x2")
+radio = (is_radio("x3") & scene.cameras[1].third_person.left("x3", "x5") & jar("x5")).iota("x3")
+target = (is_candle("x1") & scene.cameras[0].third_person.behind("x1", "x2") & bowl("x2")
+          & scene.obj_front("x1", "x3") & radio("x3")).iota("x1")
+return int(target.argmax())
+
+=== OUTPUT ===
+The program in ```python ... ```, ending with return int(target.argmax()). The program is the body of a function:
+top-level statements, no def wrapper around them.
+
+<text> {query} </text>
+
+{clarified_query_block}
